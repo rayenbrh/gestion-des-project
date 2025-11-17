@@ -1,0 +1,101 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // ============================================
+    // Helper Functions
+    // ============================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'ADMIN';
+    }
+
+    function isChefProjet() {
+      return isAuthenticated() &&
+             firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'CHEF_PROJET';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isValidFileSize() {
+      return request.resource.size < 10 * 1024 * 1024; // 10MB
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isDocument() {
+      return request.resource.contentType.matches('application/pdf') ||
+             request.resource.contentType.matches('application/msword') ||
+             request.resource.contentType.matches('application/vnd.openxmlformats-officedocument.*');
+    }
+
+    // ============================================
+    // Consultant Files
+    // ============================================
+
+    // Consultant avatars
+    match /consultants/{consultantId}/avatar/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isOwner(consultantId)) &&
+                     isValidFileSize() &&
+                     isImage();
+    }
+
+    // Consultant documents (confidential)
+    match /consultants/{consultantId}/documents/{docId}/{fileName} {
+      allow read: if isAdmin() || isOwner(consultantId);
+      allow write: if isAdmin() &&
+                     isValidFileSize() &&
+                     isDocument();
+    }
+
+    // ============================================
+    // Project Files
+    // ============================================
+
+    match /projects/{projectId}/documents/{docId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if (isAdmin() || isChefProjet()) &&
+                     isValidFileSize() &&
+                     isDocument();
+    }
+
+    // ============================================
+    // Task Attachments
+    // ============================================
+
+    match /attachments/tasks/{taskId}/{attachmentId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() &&
+                     isValidFileSize();
+    }
+
+    // ============================================
+    // Conge Attachments (justificatifs)
+    // ============================================
+
+    match /attachments/conges/{congeId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() &&
+                     isValidFileSize() &&
+                     isDocument();
+    }
+
+    // ============================================
+    // Default - Deny All
+    // ============================================
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

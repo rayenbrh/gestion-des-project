@@ -1,0 +1,256 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ============================================
+    // Helper Functions
+    // ============================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserData().role == 'ADMIN';
+    }
+
+    function isChefProjet() {
+      return isAuthenticated() && getUserData().role == 'CHEF_PROJET';
+    }
+
+    function isConsultant() {
+      return isAuthenticated() && getUserData().role == 'CONSULTANT';
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isActive() {
+      return isAuthenticated() && getUserData().isActive == true;
+    }
+
+    // ============================================
+    // Users Collection
+    // ============================================
+
+    match /users/{userId} {
+      // Anyone authenticated can read user data
+      allow read: if isAuthenticated();
+
+      // Only admins can create new users
+      allow create: if isAdmin();
+
+      // Users can update their own data, admins can update anyone
+      allow update: if isOwner(userId) || isAdmin();
+
+      // Only admins can delete users
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // Consultants Collection
+    // ============================================
+
+    match /consultants/{consultantId} {
+      // Anyone authenticated can read consultant data
+      allow read: if isAuthenticated();
+
+      // Only admins can create consultants
+      allow create: if isAdmin();
+
+      // Admins can update anyone, consultants can update their own profile
+      allow update: if isAdmin() ||
+                      (isConsultant() && resource.data.userId == request.auth.uid);
+
+      // Only admins can delete consultants
+      allow delete: if isAdmin();
+
+      // Skills sub-collection
+      match /skills/{skillId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() ||
+                       (isConsultant() && get(/databases/$(database)/documents/consultants/$(consultantId)).data.userId == request.auth.uid);
+      }
+
+      // Certifications sub-collection
+      match /certifications/{certId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() ||
+                       (isConsultant() && get(/databases/$(database)/documents/consultants/$(consultantId)).data.userId == request.auth.uid);
+      }
+
+      // Documents sub-collection (confidential)
+      match /documents/{docId} {
+        allow read: if isAdmin() ||
+                      (isConsultant() && get(/databases/$(database)/documents/consultants/$(consultantId)).data.userId == request.auth.uid);
+        allow write: if isAdmin();
+      }
+
+      // Evaluations sub-collection
+      match /evaluations/{evalId} {
+        allow read: if isAdmin() ||
+                      isChefProjet() ||
+                      (isConsultant() && get(/databases/$(database)/documents/consultants/$(consultantId)).data.userId == request.auth.uid);
+        allow write: if isAdmin() || isChefProjet();
+      }
+    }
+
+    // ============================================
+    // Conges (Leave Requests) Collection
+    // ============================================
+
+    match /conges/{congeId} {
+      // Anyone authenticated can read leave requests
+      allow read: if isAuthenticated();
+
+      // Consultants can create leave requests
+      allow create: if isConsultant();
+
+      // Admins and chefs can update, consultants can update their own drafts
+      allow update: if isAdmin() ||
+                      isChefProjet() ||
+                      (isConsultant() &&
+                       resource.data.consultantId == request.auth.uid &&
+                       resource.data.status == 'BROUILLON');
+
+      // Admins can delete, consultants can delete their own drafts
+      allow delete: if isAdmin() ||
+                      (isConsultant() &&
+                       resource.data.consultantId == request.auth.uid &&
+                       resource.data.status == 'BROUILLON');
+    }
+
+    // ============================================
+    // Projects Collection
+    // ============================================
+
+    match /projects/{projectId} {
+      // Anyone authenticated can read projects
+      allow read: if isAuthenticated();
+
+      // Admins and chefs can create projects
+      allow create: if isAdmin() || isChefProjet();
+
+      // Admins can update anyone, chefs can update their own projects
+      allow update: if isAdmin() ||
+                      (isChefProjet() && resource.data.chefProjetId == request.auth.uid);
+
+      // Only admins can delete projects
+      allow delete: if isAdmin();
+
+      // Assignments sub-collection
+      match /assignments/{assignmentId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() ||
+                       (isChefProjet() && get(/databases/$(database)/documents/projects/$(projectId)).data.chefProjetId == request.auth.uid);
+      }
+
+      // Missions sub-collection
+      match /missions/{missionId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() || isChefProjet();
+      }
+
+      // Risks sub-collection
+      match /risks/{riskId} {
+        allow read: if isAuthenticated();
+        allow write: if isAdmin() || isChefProjet();
+      }
+    }
+
+    // ============================================
+    // Tasks Collection
+    // ============================================
+
+    match /tasks/{taskId} {
+      // Anyone authenticated can read tasks
+      allow read: if isAuthenticated();
+
+      // Admins and chefs can create tasks
+      allow create: if isAdmin() || isChefProjet();
+
+      // Anyone authenticated can update tasks (for status changes)
+      allow update: if isAuthenticated();
+
+      // Admins and chefs can delete tasks
+      allow delete: if isAdmin() || isChefProjet();
+
+      // Comments sub-collection
+      match /comments/{commentId} {
+        allow read: if isAuthenticated();
+        allow create: if isAuthenticated();
+        allow update: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+        allow delete: if isAdmin() || resource.data.authorId == request.auth.uid;
+      }
+    }
+
+    // ============================================
+    // Time Tracking Collection
+    // ============================================
+
+    match /timeTracking/{timeEntryId} {
+      // Anyone authenticated can read time entries
+      allow read: if isAuthenticated();
+
+      // Consultants can create time entries
+      allow create: if isConsultant();
+
+      // Admins and chefs can update, consultants can update their own non-validated entries
+      allow update: if isAdmin() ||
+                      isChefProjet() ||
+                      (isConsultant() &&
+                       resource.data.consultantId == request.auth.uid &&
+                       resource.data.isValidated == false);
+
+      // Admins can delete, consultants can delete their own non-validated entries
+      allow delete: if isAdmin() ||
+                      (isConsultant() &&
+                       resource.data.consultantId == request.auth.uid &&
+                       resource.data.isValidated == false);
+    }
+
+    // ============================================
+    // Notifications Collection
+    // ============================================
+
+    match /notifications/{notificationId} {
+      // Users can only read their own notifications
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      // Only system/admins can create and delete notifications
+      allow create, delete: if isAdmin();
+    }
+
+    // ============================================
+    // Activity Logs Collection (Audit Trail)
+    // ============================================
+
+    match /activityLogs/{logId} {
+      // Only admins can read logs
+      allow read: if isAdmin();
+
+      // No one can write directly (only via Cloud Functions)
+      allow write: if false;
+    }
+
+    // ============================================
+    // Settings Collection
+    // ============================================
+
+    match /settings/{settingId} {
+      // Anyone authenticated can read settings
+      allow read: if isAuthenticated();
+
+      // Only admins can write settings
+      allow write: if isAdmin();
+    }
+  }
+}
