@@ -1,16 +1,56 @@
-# my_app
+# 🏢 Application de Gestion de Consulting
 
-A new Flutter project.
+Application web et mobile Flutter pour la gestion interne d'un cabinet de consulting de 3 à 10 consultants.
 
-## Getting Started
+## 📋 Vue d'ensemble
 
-This project is a starting point for a Flutter application.
+Cette application permet de:
+- **Gérer les ressources humaines** (consultants, compétences, congés, évaluations)
+- **Piloter les projets** (projets, missions, tâches, affectations)
+- **Suivre les temps** de travail des consultants
+- **Visualiser des KPI** et tableaux de bord
+- **Gérer les notifications** en temps réel
 
-A few resources to get you started if this is your first Flutter project:
+## 🎯 Fonctionnalités principales
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+### Module RH
+- Gestion des profils consultants (compétences, certifications, documents)
+- Workflow de demande et validation de congés
+- Suivi de la disponibilité et charge de travail
+- Évaluations annuelles et objectifs
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+### Module Gestion de Projets
+- Création et suivi de projets
+- Affectation des consultants
+- Gestion des missions et tâches
+- Time tracking
+- Gestion des risques
+
+### Module Dashboards
+- Dashboard administrateur
+- Dashboard chef de projet
+- Dashboard consultant
+- KPI en temps réel
+
+## 🛠️ Technologies
+
+- Flutter 3.9+ (Web + Mobile)
+- Firebase (Firestore, Auth, Storage, FCM)
+- Riverpod (State Management)
+- GoRouter (Navigation)
+- Freezed (Modèles immutables)
+
+## 📚 Documentation
+
+- [Cahier des charges](docs/CAHIER_DES_CHARGES.md)
+- [Diagrammes UML](docs/UML_DIAGRAMS.md)
+- [Schéma de base de données](docs/DATABASE_SCHEMA.md)
+
+## 🚀 Installation
+
+```bash
+flutter pub get
+flutter pub run build_runner build --delete-conflicting-outputs
+```
+
+**Version**: 1.0.0
