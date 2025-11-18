@@ -3,6 +3,8 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../screens/auth/login_screen.dart';
 import '../../screens/dashboard/dashboard_screen.dart';
+import '../../screens/consultants/consultants_list_screen.dart';
+import '../../screens/conges/conges_list_screen.dart';
 import '../../models/user_model.dart';
 import '../../providers/auth_provider.dart';
 import '../constants/app_constants.dart';
@@ -59,11 +61,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.consultants,
         name: 'consultants',
-        builder: (context, state) => const Scaffold(
-          body: Center(
-            child: Text('Consultants Screen - Coming Soon'),
-          ),
-        ),
+        builder: (context, state) => const ConsultantsListScreen(),
       ),
 
       // Projects routes
@@ -92,11 +90,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: RouteNames.conges,
         name: 'conges',
-        builder: (context, state) => const Scaffold(
-          body: Center(
-            child: Text('Congés Screen - Coming Soon'),
-          ),
-        ),
+        builder: (context, state) => const CongesListScreen(),
       ),
 
       // Time Tracking route
